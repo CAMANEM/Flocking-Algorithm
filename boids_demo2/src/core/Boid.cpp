@@ -1,4 +1,4 @@
-#include "Boid.hpp"
+#include "core/Boid.hpp"
 
 #include <cmath>
 

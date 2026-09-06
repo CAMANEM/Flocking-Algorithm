@@ -3,9 +3,9 @@
 
 #include <string>
 
-#include "Flock.hpp"
-#include "FlockingConfig.hpp"
-#include "SimulationMetrics.hpp"
+#include "core/Flock.hpp"
+#include "core/FlockingConfig.hpp"
+#include "core/SimulationMetrics.hpp"
 
 /**
  * @brief Interfaz común para todos los modelos de ejecución evaluados en el

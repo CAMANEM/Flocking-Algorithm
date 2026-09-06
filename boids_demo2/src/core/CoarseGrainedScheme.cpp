@@ -1,4 +1,4 @@
-#include "CoarseGrainedScheme.hpp"
+#include "core/CoarseGrainedScheme.hpp"
 
 CoarseGrainedScheme::CoarseGrainedScheme(unsigned int threadCount)
     : threadCount_(threadCount) {

@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "Flock.hpp"
+#include "core/Flock.hpp"
 
 /**
  * @brief Exporta el estado del enjambre como una imagen PPM a color, usada

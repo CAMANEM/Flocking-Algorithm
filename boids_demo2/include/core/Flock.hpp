@@ -3,9 +3,9 @@
 
 #include <vector>
 
-#include "Boid.hpp"
-#include "FlockingConfig.hpp"
-#include "Vector2D.hpp"
+#include "core/Boid.hpp"
+#include "core/FlockingConfig.hpp"
+#include "core/Vector2D.hpp"
 
 /**
  * @brief Contenedor del conjunto completo de boids que forman el enjambre.

@@ -22,15 +22,15 @@
 #include <iostream>
 #include <sstream>
 
-#include "CmpScheme.hpp"
-#include "CoarseGrainedScheme.hpp"
-#include "FineGrainedScheme.hpp"
-#include "Flock.hpp"
-#include "FlockingConfig.hpp"
-#include "FlockingScheme.hpp"
-#include "FrameWriter.hpp"
-#include "SequentialScheme.hpp"
-#include "SmtScheme.hpp"
+#include "core/CmpScheme.hpp"
+#include "core/CoarseGrainedScheme.hpp"
+#include "core/FineGrainedScheme.hpp"
+#include "core/Flock.hpp"
+#include "core/FlockingConfig.hpp"
+#include "core/FlockingScheme.hpp"
+#include "core/FrameWriter.hpp"
+#include "core/SequentialScheme.hpp"
+#include "core/SmtScheme.hpp"
 
 namespace {
 

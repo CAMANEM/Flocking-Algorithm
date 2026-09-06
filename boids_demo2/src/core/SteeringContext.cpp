@@ -1,5 +1,5 @@
-#include "SteeringContext.hpp"
-#include "FlockingRules.hpp"
+#include "core/SteeringContext.hpp"
+#include "core/FlockingRules.hpp"
 
 SteeringContext::SteeringContext(int boidIndex, const Flock& flock, const FlockingConfig& config)
     : boidIndex_(boidIndex),

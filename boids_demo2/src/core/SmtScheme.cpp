@@ -1,4 +1,4 @@
-#include "SmtScheme.hpp"
+#include "core/SmtScheme.hpp"
 
 #include <algorithm>
 #include <thread>

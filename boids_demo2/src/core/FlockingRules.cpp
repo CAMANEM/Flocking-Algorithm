@@ -1,4 +1,4 @@
-#include "FlockingRules.hpp"
+#include "core/FlockingRules.hpp"
 
 Vector2D FlockingRules::computeSteeringForBoid(int boidIndex, const Flock& flock,
                                                 const FlockingConfig& config) {

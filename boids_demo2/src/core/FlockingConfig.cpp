@@ -1,4 +1,4 @@
-#include "FlockingConfig.hpp"
+#include "core/FlockingConfig.hpp"
 
 FlockingConfig::FlockingConfig(int boidCount, double worldWidth, double worldHeight,
                                 double perceptionRadius, double separationRadius,

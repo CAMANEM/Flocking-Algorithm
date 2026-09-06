@@ -1,6 +1,6 @@
-#include "SequentialScheme.hpp"
-#include "FlockingRules.hpp"
-#include "Timer.hpp"
+#include "core/SequentialScheme.hpp"
+#include "core/FlockingRules.hpp"
+#include "core/Timer.hpp"
 
 #include <vector>
 

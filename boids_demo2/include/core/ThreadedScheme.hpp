@@ -1,11 +1,11 @@
 #ifndef THREADED_SCHEME_HPP
 #define THREADED_SCHEME_HPP
 
-#include "FlockingScheme.hpp"
+#include "core/FlockingScheme.hpp"
 
 #include <vector>
 
-#include "Vector2D.hpp"
+#include "core/Vector2D.hpp"
 
 /**
  * @brief Clase base para los esquemas que se implementan mediante hilos

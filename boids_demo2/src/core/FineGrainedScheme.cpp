@@ -1,6 +1,6 @@
-#include "FineGrainedScheme.hpp"
-#include "SteeringContext.hpp"
-#include "Timer.hpp"
+#include "core/FineGrainedScheme.hpp"
+#include "core/SteeringContext.hpp"
+#include "core/Timer.hpp"
 
 #include <algorithm>
 #include <vector>

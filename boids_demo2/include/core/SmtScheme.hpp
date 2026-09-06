@@ -1,7 +1,7 @@
 #ifndef SMT_SCHEME_HPP
 #define SMT_SCHEME_HPP
 
-#include "ThreadedScheme.hpp"
+#include "core/ThreadedScheme.hpp"
 
 /**
  * @brief Aproximación por software del Multihilo Simultáneo (SMT).

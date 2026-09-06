@@ -1,9 +1,9 @@
 #ifndef STEERING_CONTEXT_HPP
 #define STEERING_CONTEXT_HPP
 
-#include "Flock.hpp"
-#include "FlockingConfig.hpp"
-#include "Vector2D.hpp"
+#include "core/Flock.hpp"
+#include "core/FlockingConfig.hpp"
+#include "core/Vector2D.hpp"
 
 /**
  * @brief Representa el estado de ejecución de "un hilo virtual" que

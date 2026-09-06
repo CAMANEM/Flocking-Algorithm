@@ -1,6 +1,6 @@
-#include "ThreadedScheme.hpp"
-#include "FlockingRules.hpp"
-#include "Timer.hpp"
+#include "core/ThreadedScheme.hpp"
+#include "core/FlockingRules.hpp"
+#include "core/Timer.hpp"
 
 #include <algorithm>
 #include <thread>

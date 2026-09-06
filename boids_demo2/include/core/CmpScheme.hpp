@@ -1,7 +1,7 @@
 #ifndef CMP_SCHEME_HPP
 #define CMP_SCHEME_HPP
 
-#include "ThreadedScheme.hpp"
+#include "core/ThreadedScheme.hpp"
 
 /**
  * @brief Multiprocesamiento de chip (CMP): paralelismo real sobre múltiples

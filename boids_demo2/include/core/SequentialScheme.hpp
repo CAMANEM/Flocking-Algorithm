@@ -1,7 +1,7 @@
 #ifndef SEQUENTIAL_SCHEME_HPP
 #define SEQUENTIAL_SCHEME_HPP
 
-#include "FlockingScheme.hpp"
+#include "core/FlockingScheme.hpp"
 
 /**
  * @brief Implementación secuencial (sin hilos) de un paso de simulación

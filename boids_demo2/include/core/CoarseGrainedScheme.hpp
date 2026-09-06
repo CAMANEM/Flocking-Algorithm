@@ -1,7 +1,7 @@
 #ifndef COARSE_GRAINED_SCHEME_HPP
 #define COARSE_GRAINED_SCHEME_HPP
 
-#include "ThreadedScheme.hpp"
+#include "core/ThreadedScheme.hpp"
 
 /**
  * @brief Implementación directa mediante hilos tradicionales del sistema

@@ -1,7 +1,7 @@
 #ifndef FINE_GRAINED_SCHEME_HPP
 #define FINE_GRAINED_SCHEME_HPP
 
-#include "FlockingScheme.hpp"
+#include "core/FlockingScheme.hpp"
 
 /**
  * @brief Simulación por software del multihilo de grano fino

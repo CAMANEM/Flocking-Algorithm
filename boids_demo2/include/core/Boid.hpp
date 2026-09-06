@@ -1,8 +1,8 @@
 #ifndef BOID_HPP
 #define BOID_HPP
 
-#include "FlockingConfig.hpp"
-#include "Vector2D.hpp"
+#include "core/FlockingConfig.hpp"
+#include "core/Vector2D.hpp"
 
 /**
  * @brief Representa un único agente (boid) del enjambre: su posición y

@@ -1,9 +1,9 @@
 #ifndef FLOCKING_RULES_HPP
 #define FLOCKING_RULES_HPP
 
-#include "Flock.hpp"
-#include "FlockingConfig.hpp"
-#include "Vector2D.hpp"
+#include "core/Flock.hpp"
+#include "core/FlockingConfig.hpp"
+#include "core/Vector2D.hpp"
 
 /**
  * @brief Contiene la lógica matemática pura de las tres reglas clásicas de
