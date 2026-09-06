@@ -1,0 +1,13 @@
+flowchart TB
+    subgraph Grueso["Grano grueso: partición estática de índices de boids"]
+    P["Dividir los boidCount índices en T bloques contiguos"] --> B1["Hilo 1: boids 0..k<br/>calcula fuerzas leyendo el enjambre completo"]
+    P --> B2["Hilo 2: boids k..2k<br/>ídem"]
+    P --> B3["Hilo T: boids ...N<br/>ídem"]
+    B1 --> W1["Escribe solo en su porción disjunta<br/>de steeringForces[]"]
+    B2 --> W2[ídem]
+    B3 --> W3[ídem]
+    end
+    W1 --> Bar["Barrera única al terminar todos los bloques (join)"]
+    W2 --> Bar
+    W3 --> Bar
+    Bar --> Apply["Fase secuencial final:<br/>aplicar integracion de TODOS los boids<br/>usando las fuerzas ya calculadas"]

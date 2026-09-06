@@ -1,0 +1,67 @@
+classDiagram
+    class FlockingScheme {
+        <<interface>>
+        +simulateStep(flock, config) SimulationMetrics
+        +getSchemeName() string
+    }
+    class SequentialScheme
+    class FineGrainedScheme {
+        -partialBoidCount_ int
+    }
+    class ThreadedScheme {
+        <<abstract>>
+        +simulateStep(flock, config) SimulationMetrics
+        #computeThreadCount(flock)* unsigned int
+        -computeForceBlock(flock, config, startIndex, endIndex, steeringForces) void
+    }
+    class CoarseGrainedScheme {
+        -threadCount_ unsigned int
+    }
+    class SmtScheme {
+        -oversubscriptionFactor_ unsigned int
+    }
+    class CmpScheme
+
+    FlockingScheme <|.. SequentialScheme
+    FlockingScheme <|.. FineGrainedScheme
+    FlockingScheme <|.. ThreadedScheme
+    ThreadedScheme <|-- CoarseGrainedScheme
+    ThreadedScheme <|-- SmtScheme
+    ThreadedScheme <|-- CmpScheme
+
+    class Flock {
+        -boids_ vector~Boid~
+        +getBoid(index) Boid
+        +applyIntegration(index, force, config) void
+    }
+    class Boid {
+        -position_ Vector2D
+        -velocity_ Vector2D
+        +integrate(force, config) void
+    }
+    class FlockingRules {
+        +computeSteeringForBoid(index, flock, config)$ Vector2D
+        +combineForces(...)$ Vector2D
+    }
+    class SteeringContext {
+        -candidateCursor_ int
+        -separationSum_ Vector2D
+        +stepOnce() bool
+        +isFinished() bool
+        +computeFinalSteering() Vector2D
+    }
+    class Vector2D {
+        -x_ double
+        -y_ double
+        +limited(max) Vector2D
+    }
+
+    Flock "1" *-- "many" Boid
+    FlockingRules ..> Flock
+    FlockingRules ..> Vector2D
+    SteeringContext ..> Flock
+    SteeringContext ..> FlockingRules
+    SequentialScheme ..> FlockingRules
+    ThreadedScheme ..> FlockingRules
+    FineGrainedScheme ..> SteeringContext
+    Boid ..> Vector2D

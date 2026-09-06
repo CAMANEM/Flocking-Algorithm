@@ -1,0 +1,9 @@
+flowchart TB
+    Init["Crear un SteeringContext por cada boid del lote parcial<br/>(cada contexto = 1 'hilo virtual' con sumas propias)"] --> Loop{"¿Algún contexto activo?"}
+    Loop -- Sí --> Round["Ronda round-robin:<br/>por cada contexto NO terminado, ejecutar stepOnce()<br/>(examinar un único vecino candidato)"]
+    Round --> Check["¿El contexto ya examinó a todos los demás boids?"]
+    Check -- Sí --> Mark["Marcar contexto como finalizado<br/>(deja de recibir turnos, como un hilo que ya no hace stall)"]
+    Check -- No --> Continue["Sigue activo: recibirá otro ciclo<br/>en la próxima ronda, sin importar el stall"]
+    Mark --> Loop
+    Continue --> Loop
+    Loop -- No --> Done["Todos los contextos terminaron:<br/>combinar sumas (combineForces) y aplicar integracion"]
