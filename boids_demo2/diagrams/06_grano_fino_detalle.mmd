@@ -1,0 +1,20 @@
+flowchart TB
+    Start["Inicio: Fine-Grained Multithreading<br/>(Simulación por software)"] --> Create["Crear SteeringContext[i] para cada boid<br/>Cada contexto mantiene:<br/>- separationSum, velocitySum, positionSum<br/>- candidateCursor (vecino actual)<br/>- neighborCount"]
+    Create --> Loop{"¿Algún contexto<br/>no terminado?"}
+    Loop -- Sí --> RR["Ronda Round-Robin:<br/>para cada contexto i"]
+    RR --> Step["context[i].stepOnce()<br/>Examina UN único vecino candidato<br/>(un 'ciclo' o 'cuántum')"]
+    Step --> Acc["Acumula en separationSum,<br/>velocitySum, positionSum si<br/>el candidato está dentro del radio"]
+    Acc --> Adv["Avanza candidateCursor_<br/>al siguiente boid candidato"]
+    Adv --> DoneCheck{"¿candidateCursor<br/>≥ N?<br/>(terminó todos los vecinos)"}
+    DoneCheck -- No --> StillActive["Contexto sigue activo:<br/>recibirá otro turno<br/>en la próxima ronda"]
+    DoneCheck -- Sí --> MarkDone["Marcar contexto como finished<br/>(deja de recibir turnos)"]
+    MarkActive["Marcar que hubo activity"] --> Loop
+    StillActive --> MarkActive
+    Loop -- No --> Combine["Para cada contexto:<br/>computeFinalSteering()<br/>→ combineForces(separationSum,<br/>  velocitySum, positionSum,<br/>  neighborCount)"]
+    Combine --> Integrate["Aplicar integración a cada boid"]
+    Integrate --> End["Fin del paso"]
+
+    style Start fill:#e1f5fe
+    style Step fill:#fff3e0
+    style Combine fill:#e8f5e9
+    style Integrate fill:#e8f5e9

@@ -1,0 +1,579 @@
+\documentclass[11pt,a4paper]{article}
+
+% ─── Paquetes ────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes,calc,decorations.markings}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+
+\geometry{margin=2.5cm}
+
+% ─── Estilo de código ────────────────────────────────────────────────────────
+\lstset{
+  language=C++,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray},
+  stringstyle=\color{red},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  breaklines=true
+}
+
+% ─── Hipervínculos ───────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\begin{document}
+
+% ─── Portada ─────────────────────────────────────────────────────────────────
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+
+{\Large Instituto Tecnológico de Costa Rica\par}
+\vspace{0.3cm}
+{\large Escuela de Ingeniería en Computadores\par}
+\vspace{0.3cm}
+{\large CE4302 — Arquitectura de Computadores II\par}
+
+\vspace{2cm}
+
+{\LARGE\bfseries Demostración 1\\[0.3cm]}
+{\LARGE\bfseries Framework Experimental de Modelos de Ejecución\\Multithreading\par}
+
+\vspace{1.5cm}
+
+{\Large\bfseries Problema: Simulación de Enjambre (Boids)\par}
+
+\vspace{1cm}
+
+{\large Propuesta de paralelización y diseño de esquemas de ejecución\par}
+
+\vspace{3cm}
+
+{\large\textbf{Grupo 01}\\[0.5cm]
+Integrantes\par}
+
+\vspace{2cm}
+
+{\normalsize Semestre I — 2026\par}
+
+\end{titlepage}
+
+% ─── Índice ──────────────────────────────────────────────────────────────────
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 1. INTRODUCCIÓN
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Introducción}
+
+Los sistemas computacionales modernos explotan múltiples niveles de paralelismo para incrementar el rendimiento: desde el multihilo a nivel de hardware (SMT/Hyper-Threading) hasta el multiprocessing multinúcleo (CMP). Comprender las diferencias entre estos modelos requiere un problema que sea \textbf{inherentemente paralelizable} y que permita medir de forma controlada el impacto de cada esquema de ejecución.
+
+En este documento se presenta la \textbf{simulación de enjambre (flocking)} como problema seleccionado, basada en el algoritmo \emph{Boids} de Craig Reynolds~\cite{reynolds1987}. Se describe el problema, su formulación matemática, el algoritmo secuencial de referencia, y los diagramas de diseño para los esquemas de ejecución multihilo que serán implementados.
+
+\subsection{Organización del documento}
+
+Este documento se organiza de la siguiente manera:
+\begin{itemize}
+  \item Sección~\ref{sec:problema}: Descripción del problema de flocking y su relevancia para paralelismo.
+  \item Sección~\ref{sec:ecuaciones}: Formulación matemática de las tres reglas de Reynolds y la ecuación combinada.
+  \item Sección~\ref{sec:secuencial}: Descripción del algoritmo secuencial de referencia (baseline).
+  \item Sección~\ref{sec:paralelismo}: Propuesta de paralelización y análisis de paralelismo inherente.
+  \item Sección~\ref{sec:grano-fino}: Diseño del esquema de multihilo de grano fino (fine-grained).
+  \item Sección~\ref{sec:grano-grueso}: Diseño del esquema de multihilo de grano grueso (coarse-grained).
+  \item Sección~\ref{sec:smt-cmp}: Diseño de los esquemas SMT y CMP.
+  \item Sección~\ref{sec:justificacion}: Justificación de la selección del problema.
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 2. DESCRIPCIÓN DEL PROBLEMA
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Descripción del Problema}
+\label{sec:problema}
+
+\subsection{¿Qué es el algoritmo Boids?}
+
+El algoritmo \textbf{Boids} fue introducido por Craig Reynolds en 1987 como un modelo de comportamiento colectivo basado en reglas locales~\cite{reynolds1987}. El nombre \"boid\" es una abreviatura de \"bird-oid object\" (objeto con forma de ave). Cada boid es un agente autónomo que sigue tres reglas simples, y de su interacción emergen patrones de comportamiento colectivo como bandadas, cardúmenes o enjambres.
+
+\subsection{Relevancia para paralelismo}
+
+El problema de flocking presenta las siguientes propiedades que lo hacen ideal para evaluar modelos de ejecución concurrente:
+
+\begin{enumerate}
+  \item \textbf{Paralelismo de datos:} Cada boid calcula su fuerza de dirección de forma independiente, basándose únicamente en el estado actual del enjambre (solo lectura).
+  \item \textbf{Trabajo computacional uniforme por boid:} En la implementación bruta (sin estructura espacial), cada boid realiza un barrido de $O(N)$ sobre todos los demás boids, resultando en una complejidad total de $O(N^2)$ por paso.
+  \item \textbf{Sincronización mínima:} La separación entre fase de cálculo de fuerzas (solo lectura) y fase de integración (escritura) elimina la necesidad de locks durante el cálculo paralelo.
+  \item \textbf{Densidad de trabajo variable:} Boids en el centro del enjambre tienen más vecinos que los dispersos en los bordes, introduciendo irregularidad similar a problemas reales.
+  \item \textbf{Escalabilidad paramétrica:} El número de boids ($N$), el radio de percepción y los pesos de las reglas permiten ajustar la carga de trabajo.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 3. FORMULACIÓN MATEMÁTICA
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Formulación Matemática}
+\label{sec:ecuaciones}
+
+\subsection{Notación}
+
+Sea el enjambre compuesto por $N$ boids. Para cada boid $i \in \{0, 1, \ldots, N-1\}$ se define:
+\begin{itemize}
+  \item $\mathbf{p}_i \in \mathbb{R}^2$: posición del boid $i$.
+  \item $\mathbf{v}_i \in \mathbb{R}^2$: velocidad del boid $i$.
+  \item $r_{\text{perc}}$: radio de percepción (vecinos dentro de este radio).
+  \item $r_{\text{sep}}$: radio de separación ($r_{\text{sep}} < r_{\text{perc}}$).
+  \item $K_i$: conjunto de vecinos de $i$ tal que $0 < |\mathbf{p}_i - \mathbf{p}_j| < r_{\text{perc}}$.
+  \item $|K_i|$: número de vecinos del boid $i$.
+\end{itemize}
+
+\subsection{Regla 1: Separación}
+\label{sec:separacion}
+
+La separación evita colisiones entre boids cercanos. Cada boid se aleja de sus vecinos dentro del radio de separación $r_{\text{sep}}$, con una fuerza inversamente proporcional al cuadrado de la distancia:
+
+\begin{equation}
+  \mathbf{f}_{\text{sep}}^{(i)} = \sum_{\substack{j \in K_i \\ |\mathbf{p}_i - \mathbf{p}_j| < r_{\text{sep}}}} \frac{\mathbf{p}_i - \mathbf{p}_j}{|\mathbf{p}_i - \mathbf{p}_j|^2}
+  \label{eq:separacion}
+\end{equation}
+
+\noindent donde $\mathbf{p}_i - \mathbf{p}_j$ es el vector que apunta desde el vecino $j$ hacia el boid $i$ (repulsión), y la división por $d^2$ garantiza que boids más cercanos ejerzan una fuerza mayor.
+
+\subsection{Regla 2: Alineación}
+\label{sec:alineacion}
+
+La alineación faz con que cada boid ajuste su velocidad para coincidir con la velocidad promedio de sus vecinos:
+
+\begin{equation}
+  \mathbf{f}_{\text{ali}}^{(i)} = \frac{1}{|K_i|} \sum_{j \in K_i} \mathbf{v}_j - \mathbf{v}_i
+  \label{eq:alineacion}
+\end{equation}
+
+\noindent cuando $|K_i| = 0$, la fuerza de alineación es cero.
+
+\subsection{Regla 3: Cohesión}
+\label{sec:cohesion}
+
+La cohesión atrae cada boid hacia el centro de masa de sus vecinos:
+
+\begin{equation}
+  \mathbf{f}_{\text{coh}}^{(i)} = \frac{1}{|K_i|} \sum_{j \in K_i} \mathbf{p}_j - \mathbf{p}_i
+  \label{eq:cohesion}
+\end{equation}
+
+\noindent cuando $|K_i| = 0$, la fuerza de cohesión es cero.
+
+\subsection{Combinación lineal de fuerzas}
+\label{sec:combinacion}
+
+Las tres fuerzas se combinan mediante pesos configurables $w_{\text{sep}}$, $w_{\text{ali}}$, $w_{\text{coh}}$:
+
+\begin{equation}
+  \mathbf{F}_i = w_{\text{sep}} \cdot \mathbf{f}_{\text{sep}}^{(i)} + w_{\text{ali}} \cdot \mathbf{f}_{\text{ali}}^{(i)} + w_{\text{coh}} \cdot \mathbf{f}_{\text{coh}}^{(i)}
+  \label{eq:combinacion}
+\end{equation}
+
+\noindent la fuerza resultante se limita a una magnitud máxima $F_{\text{max}}$:
+
+\begin{equation}
+  \mathbf{F}_i = \begin{cases}
+    \mathbf{F}_i & \text{si } |\mathbf{F}_i| \leq F_{\text{max}} \\
+    F_{\text{max}} \cdot \dfrac{\mathbf{F}_i}{|\mathbf{F}_i|} & \text{si } |\mathbf{F}_i| > F_{\text{max}}
+  \end{cases}
+  \label{eq:limitar}
+\end{equation}
+
+\subsection{Integración (Euler explícito)}
+\label{sec:integracion}
+
+Una vez calculada la fuerza de dirección, se actualiza el estado del boid:
+
+\begin{align}
+  \mathbf{v}_i(t+1) &= \text{clamp}\left(\mathbf{v}_i(t) + \mathbf{F}_i, \; v_{\text{max}}\right) \label{eq:integrar_velocidad} \\
+  \mathbf{p}_i(t+1) &= \mathbf{p}_i(t) + \mathbf{v}_i(t+1) \cdot \Delta t \label{eq:integrar_posicion} \\
+  \mathbf{p}_i(t+1) &= \text{wrap}\left(\mathbf{p}_i(t+1)\right) \label{eq:wrap}
+\end{align}
+
+\noindent donde $\text{wrap}$ implementa un mundo toroidal: lo que sale por un borde reaparece por el opuesto.
+
+\subsection{Ecuación principal a paralelizar}
+\label{sec:ecuacion_principal}
+
+La ecuación que concentra la mayor carga computacional y es el objetivo de paralelización es la \textbf{ecución de cálculo de fuerza por boid} (Ecuación~\ref{eq:combinacion} combinada con las Ecuaciones~\ref{eq:separacion}--\ref{eq:cohesion}):
+
+\begin{equation}
+\boxed{
+  \mathbf{F}_i = w_{\text{sep}} \sum_{\substack{j \neq i \\ d_{ij} < r_{\text{sep}}}} \frac{\mathbf{p}_i - \mathbf{p}_j}{d_{ij}^2} \;+\; w_{\text{ali}} \left(\frac{1}{K_i}\sum_{j \in K_i} \mathbf{v}_j - \mathbf{v}_i\right) \;+\; w_{\text{coh}} \left(\frac{1}{K_i}\sum_{j \in K_i} \mathbf{p}_j - \mathbf{p}_i\right)
+}
+\label{eq:principal}
+\end{equation}
+
+\noindent esta ecuación se evalúa \textbf{independientemente} para cada boid $i$, lo que la hace directamente paraleizable: cada hilo puede calcular $\mathbf{F}_i$ para su bloque de boids sin interferir con los demás, siempre que el enjambre se mantenga como solo lectura durante el cálculo.
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 4. ALGORITMO SECUENCIAL
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Algoritmo Secuencial de Referencia}
+\label{sec:secuencial}
+
+El algoritmo secuencial (baseline) ejecuta cada paso de simulación en dos fases:
+
+\begin{enumerate}
+  \item \textbf{Fase 1 — Cálculo de fuerzas:} Para cada boid $i$, se realiza un barrido de $O(N)$ sobre todos los demás boids para acumular las sumas de separación, velocidad y posición. Luego se combinan las fuerzas mediante la Ecuación~\ref{eq:combinacion}. Complejidad: $O(N^2)$.
+  \item \textbf{Fase 2 — Integración:} Se aplica la Ecuación~\ref{eq:integrar_velocidad}--\ref{eq:wrap} para actualizar posición y velocidad de cada boid. Complejidad: $O(N)$.
+\end{enumerate}
+
+\begin{tcolorbox}[title=Pseudocódigo del algoritmo secuencial]
+\begin{lstlisting}[language={},basicstyle=\ttfamily\small,numbers=none]
+function simulateStep(flock, config):
+    // Fase 1: Calculo de fuerzas (O(N^2))
+    for i = 0 to N-1:
+        separationSum = (0, 0)
+        velocitySum = (0, 0)
+        positionSum = (0, 0)
+        neighborCount = 0
+        
+        for j = 0 to N-1:
+            if i == j: continue
+            offset = p_i - p_j
+            d = |offset|
+            if d < r_perc:
+                velocitySum += v_j
+                positionSum += p_j
+                neighborCount++
+                if d < r_sep:
+                    separationSum += offset / d^2
+        
+        F_i = combineForces(separationSum, velocitySum,
+                            positionSum, neighborCount)
+        steeringForces[i] = F_i
+    
+    // Fase 2: Integracion (O(N))
+    for i = 0 to N-1:
+        v_i = clamp(v_i + F_i, v_max)
+        p_i = p_i + v_i * dt
+        p_i = wrap(p_i)
+\end{lstlisting}
+\end{tcolorbox}
+
+\subsection{Análisis de paralelismo inherente}
+
+La Fase 1 es el cuello de botella ($O(N^2)$) y presenta las siguientes características de paralelismo:
+
+\begin{itemize}
+  \item \textbf{Independencia de datos:} Cada boid $i$ escribe su fuerza $\mathbf{F}_i$ en un índice \textbf{disjunto} del vector \texttt{steeringForces[]}.
+  \item \textbf{Solo lectura sobre el enjambre:} Todos los hilos leen el mismo estado del enjambre sin modificarlo.
+  \item \textbf{Sin races:} No hay escrituras concurrentes al mismo dato; cada hilo escribe solo en su porción del vector de fuerzas.
+  \item \textbf{Barrera natural:} La Fase 2 requiere que la Fase 1 termine completamente (barrera de sincronización).
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 5. PARALELIZACIÓN
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Propuesta de Paralelización}
+\label{sec:paralelismo}
+
+\subsection{Estrategia general: Dos fases}
+
+Todos los esquemas paralelos siguen la misma estructura de dos fases:
+
+\begin{enumerate}
+  \item \textbf{Fase 1 paralela:} Los $T$ hilos se reparten los $N$ boids en bloques contiguos de tamaño $\lceil N/T \rangle$. Cada hilo calcula las fuerzas de su bloque, leyendo el enjambre completo (solo lectura) y escribiendo en su porción disjunta de \texttt{steeringForces[]}.
+  \item \textbf{Fase 2 secuencial:} Un solo hilo aplica la integración a todos los boids.
+\end{enumerate}
+
+\begin{equation}
+  \text{Bloque del hilo } t = \left[t \cdot \left\lceil \frac{N}{T} \right\rceil, \; \min\left(N, \; (t+1) \cdot \left\lceil \frac{N}{T} \right\rceil\right)\right)
+  \label{eq:particion}
+\end{equation}
+
+\subsection{Speedup teórico}
+
+Bajo la Ley de Amdahl, si la fracción paralelizable es $p$ (la Fase 1, que domina el tiempo de ejecución), el speedup máximo con $T$ hilos es:
+
+\begin{equation}
+  S(T) = \frac{1}{(1-p) + \frac{p}{T}}
+  \label{eq:amdahl}
+\end{equation}
+
+\noindent para nuestro caso, $p \approx \frac{N^2}{N^2 + N} \approx 1$ cuando $N$ es grande, por lo que el speedup está limitado principalmente por la sobrecarga de creación de hilos y la Fase 2 secuencial.
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 6. GRANO FINO
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Multihilo de Grano Fino (Fine-Grained)}
+\label{sec:grano-fino}
+
+\subsection{Concepto}
+
+El multihilo de grano fino simula un planificador cooperativo que alterna entre hilos virtuales en cada ciclo (cuántum mínimo), independientemente de si el hilo actual ha sufrido un stall. En hardware real, esto correspondería a un cambio de contexto en \textbf{cada ciclo de reloj}.
+
+\subsection{Implementación por software}
+
+Nuestra implementación utiliza objetos \texttt{SteeringContext} que mantienen el estado parcial de cálculo de cada boid:
+
+\begin{itemize}
+  \item Cada contexto guarda: \texttt{separationSum}, \texttt{velocitySum}, \texttt{positionSum}, \texttt{neighborCount}, \texttt{candidateCursor}.
+  \item Un \"ciclo\" o \"cuántum\" = examinar \textbf{un único vecino candidato} (\texttt{stepOnce()}).
+  \item La planificación es \textbf{round-robin}: cada contexto recibe exactamente un turno por ronda.
+  \item Cuando un contexto termina de examinar todos los candidatos, se marca como finished y deja de recibir turnos.
+\end{itemize}
+
+\begin{tcolorbox}[title=Pseudocódigo — Fine-Grained]
+\begin{lstlisting}[language={},basicstyle=\ttfamily\small,numbers=none]
+function simulateStep(flock, config):
+    // Crear un contexto por cada boid del lote
+    for i = 0 to partialBoidCount-1:
+        contexts[i] = new SteeringContext(i, flock, config)
+    
+    // Round-robin cooperativo
+    anyActive = true
+    while anyActive:
+        anyActive = false
+        for each context in contexts:
+            if not context.finished:
+                context.stepOnce()  // examina 1 vecino
+                if not context.finished:
+                    anyActive = true
+    
+    // Combinar resultados y aplicar integracion
+    for each context in contexts:
+        F_i = context.computeFinalSteering()
+        flock.applyIntegration(context.boidIndex, F_i)
+\end{lstlisting}
+\end{tcolorbox}
+
+\subsection{Diagrama de flujo}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=0.8cm,
+  block/.style={rectangle, draw, fill=blue!8, text width=7cm, minimum height=0.9cm, align=center, rounded corners},
+  decision/.style={diamond, draw, fill=orange!15, text width=3cm, minimum height=0.8cm, align=center},
+  arrow/.style={-{Stealth[length=3mm]}, thick}
+]
+
+\node[block] (init) {Crear \texttt{SteeringContext[i]} para cada boid};
+\node[decision, below=of init] (check) {¿Algún contexto\\no terminado?};
+\node[block, below=of check] (step) {\texttt{context[i].stepOnce()}\\Examina UN único vecino candidato};
+\node[decision, below=of step] (done) {¿candidateCursor\\$\geq$ N?};
+\node[block, below right=0.6cm and 0.2cm of done] (mark) {Marcar contexto\\como \texttt{finished}};
+\node[block, below left=0.6cm and 0.2cm of done] (active) {Contexto sigue activo\\recibirá otro turno};
+
+\node[block, below=1.8cm of check] (combine) {\texttt{computeFinalSteering()}\\$\rightarrow$ \texttt{combineForces()}};
+\node[block, below=of combine] (integrate) {Aplicar integración a cada boid};
+
+\draw[arrow] (init) -- (check);
+\draw[arrow] (check) -- node[right] {Sí} (step);
+\draw[arrow] (step) -- (done);
+\draw[arrow] (done) -- node[above left] {Sí} (mark);
+\draw[arrow] (done) -- node[above right] {No} (active);
+\draw[arrow] (mark) |- (check);
+\draw[arrow] (active) |- (check);
+\draw[arrow] (check) -- node[left] {No} (combine);
+\draw[arrow] (combine) -- (integrate);
+
+\end{tikzpicture}
+\caption{Diagrama de flujo del esquema de grano fino. Cada turno examina un único vecino (cuántum mínimo).}
+\label{fig:grano_fino}
+\end{figure}
+
+\subsection{Características clave}
+
+\begin{itemize}
+  \item \textbf{No es paralelismo real:} Se ejecuta en un solo hilo del OS, simulando el comportamiento de un planificador cooperativo.
+  \item \textbf{Cambio de contexto por evento:} El cambio ocurre en cada ciclo (examen de un vecino), no por stall.
+  \item \textbf{Procesamiento parcial:} Para fines de demostración, se procesan solo los primeros $M$ boids (configurable).
+  \item \textbf{Overhead elevado:} El intercambio frecuente entre contextos incrementa el tiempo total respecto al secuencial.
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 7. GRANO GRUESO
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Multihilo de Grano Grueso (Coarse-Grained)}
+\label{sec:grano-grueso}
+
+\subsection{Concepto}
+
+El multihilo de grano grueso utiliza hilos reales del sistema operativo (\texttt{std::thread}) donde el cambio de contexto ocurre únicamente ante \textbf{eventos de bloqueo costosos} (join, Espera de sincronización).
+
+\subsection{Implementación}
+
+\begin{itemize}
+  \item Se fija un número de hilos $T$ (por defecto $T = 4$).
+  \item Se particionan los $N$ boids en $T$ bloques contiguos.
+  \item Se lanza un \texttt{std::thread} por bloque.
+  \item Cada hilo ejecuta \texttt{computeForceBlock()} para su rango de índices.
+  \item La sincronización se realiza mediante \texttt{join()} (barrera de bloqueo costoso).
+\end{itemize}
+
+\begin{tcolorbox}[title=Pseudocódigo — Coarse-Grained]
+\begin{lstlisting}[language={},basicstyle=\ttfamily\small,numbers=none]
+function simulateStep(flock, config):
+    T = computeThreadCount()  // fijo: 4
+    bpt = ceil(N / T)
+    
+    // Fase 1: Lanzar hilos
+    for t = 0 to T-1:
+        start = t * bpt
+        end = min(N, start + bpt)
+        spawn thread computeForceBlock(flock, config,
+                                       start, end,
+                                       steeringForces)
+    
+    // Barrera: join() — evento de bloqueo costoso
+    for each thread: join()
+    
+    // Fase 2: Integracion secuencial
+    for i = 0 to N-1:
+        flock.applyIntegration(i, steeringForces[i])
+\end{lstlisting}
+\end{tcolorbox}
+
+\subsection{Diagrama de flujo}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=0.7cm,
+  block/.style={rectangle, draw, fill=blue!8, text width=6.5cm, minimum height=0.8cm, align=center, rounded corners},
+  thread/.style={rectangle, draw, fill=green!10, text width=3cm, minimum height=0.7cm, align=center, rounded corners},
+  arrow/.style={-{Stealth[length=3mm]}, thick}
+]
+
+\node[block] (split) {Particionar $N$ boids en $T$ bloques\\$\lceil N/T \rceil$ por hilo};
+\node[block, below=of split] (spawn) {Lanzar $T$ \texttt{std::thread}};
+
+\node[thread, below left=0.8cm and 1.5cm of spawn] (t1) {Hilo 0\\boids $[0, k)$};
+\node[thread, below=0.8cm of spawn] (t2) {Hilo 1\\boids $[k, 2k)$};
+\node[thread, below right=0.8cm and 1.5cm of spawn] (t3) {Hilo $T{-}1$\\boids $[(T{-}1)k, N)$};
+
+\node[block, below=1.2cm of t2] (join) {\texttt{join()} — Barrera de sincronización};
+\node[block, below=of join] (int) {Fase 2: integración secuencial};
+
+\draw[arrow] (split) -- (spawn);
+\draw[arrow] (spawn) -- (t1);
+\draw[arrow] (spawn) -- (t2);
+\draw[arrow] (spawn) -- (t3);
+\draw[arrow] (t1) |- (join);
+\draw[arrow] (t2) -- (join);
+\draw[arrow] (t3) |- (join);
+\draw[arrow] (join) -- (int);
+
+\end{tikzpicture}
+\caption{Diagrama de flujo del esquema de grano grueso. Cada hilo procesa un bloque contiguo de boids.}
+\label{fig:grano_grueso}
+\end{figure}
+
+\subsection{Garantía de ausencia de races}
+
+\begin{itemize}
+  \item El enjambre es \textbf{solo lectura} durante la Fase 1.
+  \item Cada hilo escribe exclusivamente en \texttt{steeringForces[i]} para $i$ en su rango.
+  \item Los rangos son \textbf{disjuntos} por construcción (Ecuación~\ref{eq:particion}).
+  \item No se requieren mutex, atomics ni locks.
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 8. SMT Y CMP
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Esquemas SMT y CMP}
+\label{sec:smt-cmp}
+
+\subsection{SMT — Simultaneous Multithreading}
+
+SMT simula hyper-threading mediante sobre-suscripción de hilos:
+
+\begin{itemize}
+  \item $T = \text{hardware\_concurrency()} \times 2$ (factor configurable).
+  \item Se lanzan $T$ hilos sobre $P$ núcleos lógicos ($T > P$).
+  \item El planificador del SO distribuye los $T$ hilos entre los $P$ núcleos mediante preemptive scheduling.
+  \item Se debe deshabilitar SMT/Hyper-Threading en BIOS/UEFI para comparar.
+\end{itemize}
+
+\subsection{CMP — Chip Multiprocessing}
+
+CMP mapea directamente hilos a núcleos físicos:
+
+\begin{itemize}
+  \item $T = \text{hardware\_concurrency()}$ (1 hilo por núcleo lógico).
+  \item Sin sobre-suscripción: cada núcleo ejecuta exactamente un hilo.
+  \item Modelo más cercano al paralelismo real de hardware.
+\end{itemize}
+
+Ambos esquemas heredan la implementación de \texttt{ThreadedScheme} (Template Method), variando únicamente la política en \texttt{computeThreadCount()}.
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 9. JUSTIFICACIÓN
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Justificación de la Selección del Problema}
+\label{sec:justificacion}
+
+La simulación de enjambre (Boids) fue seleccionada por las siguientes razones:
+
+\begin{enumerate}
+  \item \textbf{Paralelismo natural:} El cálculo de fuerzas por boid es independiente, lo que permite particionamiento directo sin dependencias entre datos de salida.
+  \item \textbf{Carga computacional ajustable:} Con $N = 70$ boids, el cálculo bruto evalúa $70 \times 69 = 4{,}830$ pares por paso. Con $N = 500$, serían $249{,}500$ pares, lo que permite estudiar escalabilidad.
+  \item \textbf{Dos fases claras:} La separación entre cálculo de fuerzas (paralelizable) e integración (secuencial) facilita el análisis de Amdahl.
+  \item \textbf{Validación de correctitud:} Dado que el cálculo es determinista (mismo estado inicial = mismo resultado), se puede validar que los esquemas paralelos producen resultados idénticos al secuencial.
+  \item \textbf{Categoría sugerida:} El problema encaja directamente en la categoría de ``simulación de partículas'' recomendada en el enunciado del proyecto.
+  \item \textbf{Irregularidad de trabajo:} Boids en regiones densas tienen más vecinos, lo que genera distribución no uniforme de trabajo (similar a problemas reales como Mandelbrot).
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════════════════
+% 10. RESUMEN DE ESQUEMAS
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Resumen de Esquemas de Ejecución}
+
+\begin{table}[h]
+\centering
+\caption{Comparación de los esquemas de ejecución propuestos.}
+\label{tab:esquemas}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Esquema} & \textbf{Hilos} & \textbf{Cambio de contexto} & \textbf{Implementación} \\
+\midrule
+Secuencial & 1 & No aplica & \texttt{SequentialScheme} \\
+Grano fino & Virtual & Cada ciclo (1 vecino) & \texttt{FineGrainedScheme} \\
+Grano grueso & $T$ fijo & Bloqueo (\texttt{join}) & \texttt{CoarseGrainedScheme} \\
+SMT & $2P$ & Preemptive (SO) & \texttt{SmtScheme} \\
+CMP & $P$ & Preemptive (SO) & \texttt{CmpScheme} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════════════════
+% REFERENCIAS
+% ══════════════════════════════════════════════════════════════════════════════
+\begin{thebibliography}{9}
+
+\bibitem{reynolds1987}
+Reynolds, C.~W. (1987).
+\newblock Flocks, herds and schools: A distributed behavioral model.
+\newblock In \textit{Proceedings of the 14th Annual Conference on Computer Graphics and Interactive Techniques} (SIGGRAPH~'87), pp.~25--34.
+
+\bibitem{hennessy2017}
+Hennessy, J.~L., \& Patterson, D.~A. (2017).
+\newblock \textit{Computer Architecture: A Quantitative Approach} (6th ed.).
+\newblock Elsevier.
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,25 @@
+flowchart TB
+    Start["Inicio del paso de simulación"] --> Alloc["Asignar vector de fuerzas<br/>steeringForces[N]"]
+    Alloc --> Phase1{"Fase 1: Cálculo de fuerzas<br/>(paralelizable)"}
+    Phase1 --> Loop{"Para cada boid i = 0..N-1"}
+    Loop --> Sweep["Barrido bruto O(N):<br/>examina todos los demás boids"]
+    Sweep --> Check{"|p_i - p_j| < r_perc?"}
+    Check -- Sí --> Accum["Acumular:<br/>separationSum += (p_i-p_j)/d²<br/>velocitySum += v_j<br/>positionSum += p_j<br/>neighborCount++"]
+    Check -- No --> Skip["Saltar al siguiente j"]
+    Accum --> SepCheck{"|p_i - p_j| < r_sep?"}
+    SepCheck -- Sí --> SepAdd["separationSum += (p_i-p_j)/d²"]
+    SepCheck -- No --> NextJ["Siguiente j"]
+    SepAdd --> NextJ
+    Skip --> NextJ
+    NextJ --> MoreJ{"¿Quedan más boids j?"}
+    MoreJ -- Sí --> Sweep
+    MoreJ -- No --> Combine["combineForces():<br/>F_i = w_sep·f_sep + w_ali·f_ali + w_coh·f_coh"]
+    Combine --> Store["steeringForces[i] = F_i"]
+    Store --> MoreI{"¿Quedan más boids i?"}
+    MoreI -- Sí --> Loop
+    MoreI -- No --> Phase2{"Fase 2: Integración<br/>(secuencial, económica)"}
+    Phase2 --> IntLoop{"Para cada boid i = 0..N-1"}
+    IntLoop --> Integrate["v_i = clamp(v_i + F_i, v_max)<br/>p_i = p_i + v_i · Δt<br/>p_i = wrap(p_i)"]
+    Integrate --> MoreInt{"¿Quedan más boids?"}
+    MoreInt -- Sí --> IntLoop
+    MoreInt -- No --> End["Fin del paso"]

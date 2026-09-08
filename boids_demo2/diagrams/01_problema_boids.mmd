@@ -1,0 +1,29 @@
+flowchart LR
+    subgraph Problema["Problema: Simulación de Enjambre (Flocking)"]
+        direction TB
+        B1["Boid i"]
+        B2["Boid j"]
+        B3["Boid k"]
+        B4["..."]
+        B5["Boid N"]
+    end
+
+    subgraph Reglas["Tres Reglas de Reynolds"]
+        direction TB
+        R1["1. Separación<br/>Evitar colisiones<br/>con vecinos cercanos"]
+        R2["2. Alineación<br/>Igualar dirección<br/>con el grupo"]
+        R3["3. Cohesión<br/>Moverse hacia el<br/>centro del grupo"]
+    end
+
+    subgraph Entrada["Estado Actual"]
+        E1["Posiciones<br/>p_i"]
+        E2["Velocidades<br/>v_i"]
+    end
+
+    subgraph Salida["Resultado"]
+        S1["Fuerza de<br/>dirección f_i"]
+    end
+
+    Entrada --> Problema
+    Problema --> Reglas
+    Reglas --> Salida

@@ -1,0 +1,22 @@
+flowchart TB
+    Start["Inicio: Coarse-Grained Multithreading<br/>(Hilos reales del SO)"] --> Split["Particionar boidCount en T bloques<br/>boidsPerThread = ceil(N / T)<br/>Bloque t: índices [t·bpt, (t+1)·bpt)"]
+    Split --> Spawn["Lanzar T std::thread<br/>Cada hilo ejecuta computeForceBlock()"]
+    
+    subgraph Threads["Ejecución paralela — T hilos"]
+        direction LR
+        T1["Hilo 0<br/>boids [0, k)"]
+        T2["Hilo 1<br/>boids [k, 2k)"]
+        T3["..."]
+        T4["Hilo T-1<br/>boids [(T-1)k, N)"]
+    end
+
+    Spawn --> Threads
+    Threads --> Compute["Cada hilo:<br/>Para i en su rango:<br/>  steeringForces[i] =<br/>    computeSteeringForBoid(i)<br/>(lee enjambre completo,<br/>escribe en su porción disjunta)"]
+    Compute --> Join["join() — Barrera de sincronización<br/>('evento de bloqueo costoso')"]
+    Join --> Seq["Fase 2 secuencial:<br/>Para cada i: applyIntegration(i, steeringForces[i])"]
+    Seq --> End["Fin del paso"]
+
+    style Start fill:#e1f5fe
+    style Spawn fill:#fff3e0
+    style Join fill:#ffebee
+    style Seq fill:#e8f5e9

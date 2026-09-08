@@ -1,0 +1,30 @@
+flowchart TB
+    subgraph Separacion["Separación"]
+        direction TB
+        SS["f_sep = Σ (p_i - p_j) / d²<br/>para todo j dentro de radio de separación<br/>donde d = |p_i - p_j|"]
+    end
+
+    subgraph Alineacion["Alineación"]
+        direction TB
+        AL["f_ali = (1/K) Σ v_j - v_i<br/>para todo j dentro de radio de percepción<br/>K = número de vecinos"]
+    end
+
+    subgraph Cohesion["Cohesión"]
+        direction TB
+        CO["f_coh = (1/K) Σ p_j - p_i<br/>para todo j dentro de radio de percepción<br/>K = número de vecinos"]
+    end
+
+    subgraph Combinacion["Combinación Lineal"]
+        direction TB
+        COMB["F_i = w_sep · f_sep + w_ali · f_ali + w_coh · f_coh<br/>con F_i = F_i si |F_i| ≤ F_max<br/>sino F_i = F_max · (F_i / |F_i|)"]
+    end
+
+    subgraph Integracion["Integración (Euler explícito)"]
+        direction TB
+        INT["v_i(t+1) = clamp(v_i(t) + F_i, v_max)<br/>p_i(t+1) = p_i(t) + v_i(t+1) · Δt<br/>p_i(t+1) = wrap(p_i(t+1))"]
+    end
+
+    Separacion --> Combinacion
+    Alineacion --> Combinacion
+    Cohesion --> Combinacion
+    Combinacion --> Integracion

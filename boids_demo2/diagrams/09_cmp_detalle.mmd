@@ -1,0 +1,21 @@
+flowchart TB
+    Start["Inicio: CMP — Chip Multiprocessing<br/>(Un hilo por núcleo lógico)"] --> Query["T = hardware_concurrency()<br/>(número de núcleos lógicos del SO)"]
+    Query --> Spawn["Lanzar T std::thread<br/>Mismo patrón que Coarse-Grained"]
+    
+    subgraph Direct["T hilos = P núcleos (1:1)"]
+        direction LR
+        C1["Hilo 0 → Núcleo 0"]
+        C2["Hilo 1 → Núcleo 1"]
+        C3["Hilo 2 → Núcleo 2"]
+        C4["Hilo T-1 → Núcleo P-1"]
+    end
+
+    Spawn --> Direct
+    Direct --> Compute["Cada hilo calcula su bloque<br/>Sin sobre-suscripción:<br/>cada núcleo ejecuta exactamente 1 hilo"]
+    Compute --> Join["join() — Barrera de sincronización"]
+    Join --> Seq["Fase 2 secuencial"]
+    Seq --> End["Fin del paso"]
+
+    style Start fill:#e1f5fe
+    style Direct fill:#e8f5e9
+    style Join fill:#ffebee

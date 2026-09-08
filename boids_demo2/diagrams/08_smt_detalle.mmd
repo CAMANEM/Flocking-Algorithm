@@ -1,0 +1,24 @@
+flowchart TB
+    Start["Inicio: SMT — Simultaneous Multithreading<br/>(Sobre-suscripción de hilos lógicos)"] --> Calc["Calcular T = hardware_concurrency × 2<br/>(doble de hilos que núcleos lógicos)"]
+    Calc --> Spawn["Lanzar T std::thread<br/>Mismo patrón que Coarse-Grained"]
+    
+    subgraph Oversub["T hilos ejecutándose sobre P núcleos (T > P)"]
+        direction LR
+        O1["Hilo 0 → asignado a Núcleo 0"]
+        O2["Hilo 1 → asignado a Núcleo 0"]
+        O3["Hilo 2 → asignado a Núcleo 1"]
+        O4["Hilo 3 → asignado a Núcleo 1"]
+        O5["..."]
+    end
+
+    Spawn --> Oversub
+    Oversub --> Scheduling["El SO planifica T hilos sobre P núcleos<br/>Intercambio de contexto por tiempo<br/>(preemptive scheduling)"]
+    Scheduling --> Compute["Cada hilo calcula su bloque<br/>de fuerzas (mismo código que CMP)"]
+    Compute --> Join["join() — Barrera de sincronización"]
+    Join --> Seq["Fase 2 secuencial"]
+    Seq --> End["Fin del paso"]
+
+    style Start fill:#e1f5fe
+    style Oversub fill:#fff3e0
+    style Scheduling fill:#ffebee
+    style Join fill:#ffebee
